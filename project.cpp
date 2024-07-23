@@ -17,7 +17,7 @@ void print_start(int n, int n_cpu, int seed, double lambda, int threshold) {
 
 int main(int argc, char **argv){
     if (argc != 6) {
-        fprintf(stderr, "Usage: %s <n> <n_cpu> <seed> <lambda> <threshold>\n", *argv);
+        fprintf(stderr, "ERROR: Usage: %s <n> <n_cpu> <seed> <lambda> <threshold>\n", *argv);
         return EXIT_FAILURE;
     }
 
