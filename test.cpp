@@ -177,12 +177,14 @@ int main(int argc, char *argv[])
         simout << "-- number of processes: " << n << endl;
         simout << "-- number of CPU-bound processes: " << ncpu << endl;
         simout << "-- number of I/O-bound processes: " << n - ncpu << endl;
-        simout << "-- CPU-bound average CPU burst time: " << fixed << setprecision(3) << cpu_bound_cpu_avg << " ms" << endl;
-        simout << "-- I/O-bound average CPU burst time: " << fixed << setprecision(3) << io_bound_cpu_avg << " ms" << endl;
-        simout << "-- overall average CPU burst time: " << fixed << setprecision(3) << overall_cpu_avg << " ms" << endl;
-        simout << "-- CPU-bound average I/O burst time: " << fixed << setprecision(3) << cpu_bound_io_avg << " ms" << endl;
-        simout << "-- I/O-bound average I/O burst time: " << fixed << setprecision(3) << io_bound_io_avg << " ms" << endl;
-        simout << "-- overall average I/O burst time: " << fixed << setprecision(3) << overall_io_avg << " ms" << endl;
+        
+        simout << fixed << setprecision(3);
+        simout << "-- CPU-bound average CPU burst time: " << cpu_bound_cpu_avg << " ms" << endl;
+        simout << "-- I/O-bound average CPU burst time: " << io_bound_cpu_avg << " ms" << endl;
+        simout << "-- overall average CPU burst time: " << overall_cpu_avg << " ms" << endl;
+        simout << "-- CPU-bound average I/O burst time: " << cpu_bound_io_avg << " ms" << endl;
+        simout << "-- I/O-bound average I/O burst time: " << io_bound_io_avg << " ms" << endl;
+        simout << "-- overall average I/O burst time: " << overall_io_avg << " ms" << endl;
     } else {
         cerr << "ERROR: unable to open simout.txt" << endl;
     }
