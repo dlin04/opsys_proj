@@ -1,125 +1,214 @@
-
-#include <iomanip>
 #include <iostream>
 #include <vector>
 #include <queue>
 #include <cmath>
 #include <random>
-#include <algorithm> // Add this line to include the algorithm header
+#include <iomanip>
+#include <fstream>
+#include <map>
+#include <string>
+#include <algorithm>
 
 using namespace std;
 
-void print_start(int n, int n_cpu, int seed, double lambda, int threshold) {
-    cout << "<<< PROJECT PART I" << endl;
-    if (n_cpu > 1) {
-        cout << "<<< -- process set (n=" << n << ") with " << n_cpu << " CPU-bound processes" << endl;
-    } else {
-        cout << "<<< -- process set (n=" << n << ") with " << n_cpu << " CPU-bound process" << endl;
-    }
-    cout << "<<< -- seed=" << seed << "; lambda=" << fixed << setprecision(6) << lambda << "; bound=" << threshold << endl;
-}
-using namespace std;
-
-class Process {
+class Process
+{
 public:
     string id;
     int arrivalTime;
+    bool CPUBound;
     vector<int> cpuBursts;
     vector<int> ioBursts;
 
-    Process(string id, int arrivalTime) : id(id), arrivalTime(arrivalTime) {}
+    Process(string id, int arrivalTime, bool CPUBound) : id(id), arrivalTime(arrivalTime), CPUBound(CPUBound) {}
 };
 
-double next_exp(double lambda, mt19937_64& rng) {
-    uniform_real_distribution<double> dist(0.0, 1.0);
-    return -log(dist(rng)) / lambda;
-}
+class ExponentialDistribution
+{
+private:
+    int seed;
+    double lambda;
+    int max;
 
-vector<Process> generateProcesses(int n, int ncpu, double lambda, int bound, int seed) {
-    vector<Process> processes;
-    mt19937_64 rng(seed);
-
-    auto generateBurstTime = [&](double factor) {
-        double burst;
-        do {
-            burst = next_exp(lambda, rng);
-        } while (burst > bound);
-        return static_cast<int>(ceil(burst * factor));
-    };
-
-    for (int i = 0; i < n; ++i) {
-        string id = string(1, 'A' + i / 10) + to_string(i % 10);
-        int arrivalTime = static_cast<int>(floor(next_exp(lambda, rng)));
-        Process process(id, arrivalTime);
-
-        int numBursts = static_cast<int>(ceil(drand48() * 32));
-        bool isCpuBound = i < ncpu;
-
-        for (int j = 0; j < numBursts; ++j) {
-            double cpuFactor = isCpuBound ? 4.0 : 1.0;
-            double ioFactor = isCpuBound ? 1.0 / 8.0 : 8.0;
-
-            process.cpuBursts.push_back(generateBurstTime(cpuFactor));
-            if (j < numBursts - 1) {
-                process.ioBursts.push_back(generateBurstTime(ioFactor));
-            }
-        }
-
-        processes.push_back(process);
+public:
+    ExponentialDistribution(int seed, double lambda, int max)
+    {
+        this->seed = seed;
+        this->lambda = lambda;
+        this->max = max;
+        srand48(this->seed);
     }
 
+    double next_exp()
+    {
+        while(true) {
+            double r = drand48();
+            double num = -log(r) / lambda;
+            if(num <= max) {
+                return num;
+            }
+        }
+    }
+};
+
+vector<Process> generateProcesses(int n, int ncpu, ExponentialDistribution ed)
+{
+    vector<Process> processes;
+    char letter = 'A';
+    int number = 0;
+    // Loop over process count
+    for (int i = 0; i < n; i++)
+    {
+        // Get random number
+        int arrival = floor(ed.next_exp());
+        // Get the process ID
+        if (number > 9)
+        {
+            number = 0;
+            letter++;
+        }
+        char num = '0' + number;
+        string id = string(1, letter) + num;
+        // Define the process
+        Process p = Process(id, arrival,ncpu > 0);
+        // Increment ids
+        number++;
+        // Find the CPU burst count
+        int numCPU = ceil(drand48() * 32);
+        for (int j = 0; j < numCPU; j++)
+        {
+            // CPU TASK
+            int cputime = ceil(ed.next_exp());
+            if (ncpu > 0)
+            {
+                cputime *= 4;
+            }
+            p.cpuBursts.push_back(cputime);
+            // IO TASK (all but last iteration)
+            if (j < numCPU - 1)
+            {
+                int iotime = ceil(ed.next_exp());
+                if (ncpu <= 0)
+                {
+                    iotime *= 8;
+                }
+                p.ioBursts.push_back(iotime);
+            }
+        }
+        // If this process was a CPU scheduled process, decrement that counter
+        if (ncpu > 0)
+        {
+            ncpu--;
+        }
+        // Add process to list
+        processes.push_back(p);
+    }
     return processes;
 }
 
-void printProcesses(const vector<Process>& processes, int ncpu, int seed, double lambda, int bound) {
-    print_start(processes.size(), ncpu, seed, lambda, bound);
+void printProcesses(const vector<Process> &processes, int ncpu, int seed, double lambda, int bound, map<string, int> &measurements)
+{
+    cout << "<<< PROJECT PART I" << endl;
+    cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process" <<  (ncpu > 1 || ncpu == 0 ? "es" : "") << endl;
+    cout << "<<< -- seed=" << seed << "; lambda=" << fixed << setprecision(6) << lambda << "; bound=" << bound << endl;
 
-    for (const auto& process : processes) {
-        cout << (find(process.id.begin(), process.id.end(), '0') != process.id.end() ? "CPU-bound" : "I/O-bound")
+    for (Process process : processes)
+    {
+        bool is_CPU_bound = process.CPUBound;
+        cout << (is_CPU_bound ? "CPU-bound" : "I/O-bound")
              << " process " << process.id << ": arrival time " << process.arrivalTime << "ms; "
-             << process.cpuBursts.size() << " CPU bursts:" << endl;
+             << process.cpuBursts.size() << " " << (process.cpuBursts.size() == 1 ? "CPU burst:" : "CPU bursts:") << endl;
 
-        for (size_t i = 0; i < process.cpuBursts.size(); ++i) {
+        for (long unsigned int i = 0; i < process.cpuBursts.size(); i++)
+        {
             cout << "==> CPU burst " << process.cpuBursts[i] << "ms";
-            if (i < process.ioBursts.size()) {
+            
+            measurements[is_CPU_bound ? "cpu-bound-cpu-time" : "io-bound-cpu-time"] += process.cpuBursts[i];
+            measurements[is_CPU_bound ? "num-cpu-bound-cpu-bursts" : "num-io-bound-cpu-bursts"] += 1;
+            
+            if (i < process.ioBursts.size())
+            {
                 cout << " ==> I/O burst " << process.ioBursts[i] << "ms";
+                measurements[is_CPU_bound ? "cpu-bound-io-time" : "io-bound-io-time"] += process.ioBursts[i];
+                measurements[is_CPU_bound ? "num-cpu-bound-io-bursts" : "num-io-bound-io-bursts"] += 1;
             }
             cout << endl;
         }
     }
 }
 
-int main(int argc, char **argv){
-    if (argc != 6) {
-        cerr << "ERROR: Usage: " << *argv << " <n> <n_cpu> <seed> <lambda> <threshold>" << endl;
-        return EXIT_FAILURE;
+int main(int argc, char *argv[])
+{
+    if (argc != 6)
+    {
+        cerr << "Usage: " << argv[0] << " <n> <ncpu> <seed> <lambda> <bound>" << endl;
+        return 1;
     }
 
-    int n = atoi(*(argv + 1)); // number of processes to simulate
-    int n_cpu = atoi(*(argv + 2)); // number of processes cpu bound
-    int seed = atoi(*(argv + 3)); // pseduo-random number sequence seed
-    double lambda = atof(*(argv + 4)); // interarrival times
-    int threshold = atoi(*(argv + 5)); // upper bound
+    int n = stoi(argv[1]);
+    int ncpu = stoi(argv[2]);
+    int seed = stoi(argv[3]);
+    double lambda = stod(argv[4]);
+    int bound = stoi(argv[5]);
 
-    // Check if n, n_cpu, seed, threshold are integers
-    if (n != static_cast<int>(n) || n_cpu != static_cast<int>(n_cpu) || seed != static_cast<int>(seed) || threshold != static_cast<int>(threshold)) {
-        cerr << "ERROR: Invalid argument(s)" << endl;
-        return EXIT_FAILURE;
+    ExponentialDistribution ed = ExponentialDistribution(seed, lambda, bound);
+
+    map<string, int> measurements;
+    measurements["cpu-bound-cpu-time"] = 0;
+    measurements["cpu-bound-io-time"] = 0;
+    measurements["io-bound-cpu-time"] = 0;
+    measurements["io-bound-io-time"] = 0;
+    measurements["num-cpu-bound-cpu-bursts"] = 0;
+    measurements["num-io-bound-cpu-bursts"] = 0;
+    measurements["num-cpu-bound-io-bursts"] = 0;
+    measurements["num-io-bound-io-bursts"] = 0;
+
+    auto processes = generateProcesses(n, ncpu, ed);
+    printProcesses(processes, ncpu, seed, lambda, bound, measurements);
+
+
+    // create simout file to write averages to
+    ofstream simout("simout.txt");
+    if(simout.is_open()){
+        double cpu_bound_cpu_avg = (measurements["num-cpu-bound-cpu-bursts"] > 0) ? 
+            measurements["cpu-bound-cpu-time"] / double(measurements["num-cpu-bound-cpu-bursts"]) : 0;
+        double io_bound_cpu_avg = (measurements["num-io-bound-cpu-bursts"] > 0) ?
+            measurements["io-bound-cpu-time"] / double(measurements["num-io-bound-cpu-bursts"]) : 0;
+        double overall_cpu_avg = ((measurements["num-cpu-bound-cpu-bursts"] + 
+            measurements["num-io-bound-cpu-bursts"]) > 0) ?
+            (measurements["cpu-bound-cpu-time"] + measurements["io-bound-cpu-time"]) / 
+            double(measurements["num-cpu-bound-cpu-bursts"] + measurements["num-io-bound-cpu-bursts"]) : 0;
+        double cpu_bound_io_avg = (measurements["num-cpu-bound-io-bursts"] > 0) ?
+            measurements["cpu-bound-io-time"] / double(measurements["num-cpu-bound-io-bursts"]) : 0;
+        double io_bound_io_avg = (measurements["num-io-bound-io-bursts"] > 0) ?
+            measurements["io-bound-io-time"] / double(measurements["num-io-bound-io-bursts"]) : 0;
+        double overall_io_avg = ((measurements["num-cpu-bound-io-bursts"] + 
+            measurements["num-io-bound-io-bursts"]) > 0) ?
+            (measurements["io-bound-io-time"] + measurements["cpu-bound-io-time"]) /
+            double(measurements["num-cpu-bound-io-bursts"] + measurements["num-io-bound-io-bursts"]) : 0;
+            
+        // ROUND UP TO 3 DECIMALS
+        cpu_bound_cpu_avg = ceil(cpu_bound_cpu_avg*1000)/1000;
+        io_bound_cpu_avg = ceil(io_bound_cpu_avg*1000)/1000;
+        overall_cpu_avg = ceil(overall_cpu_avg*1000)/1000;
+        cpu_bound_io_avg = ceil(cpu_bound_io_avg*1000)/1000;
+        io_bound_io_avg = ceil(io_bound_io_avg*1000)/1000;
+        overall_io_avg = ceil(overall_io_avg*1000)/1000;
+
+        simout << "-- number of processes: " << n << endl;
+        simout << "-- number of CPU-bound processes: " << ncpu << endl;
+        simout << "-- number of I/O-bound processes: " << n - ncpu << endl;
+        
+        simout << fixed << setprecision(3);
+        simout << "-- CPU-bound average CPU burst time: " << cpu_bound_cpu_avg << " ms" << endl;
+        simout << "-- I/O-bound average CPU burst time: " << io_bound_cpu_avg << " ms" << endl;
+        simout << "-- overall average CPU burst time: " << overall_cpu_avg << " ms" << endl;
+        simout << "-- CPU-bound average I/O burst time: " << cpu_bound_io_avg << " ms" << endl;
+        simout << "-- I/O-bound average I/O burst time: " << io_bound_io_avg << " ms" << endl;
+        simout << "-- overall average I/O burst time: " << overall_io_avg << " ms" << endl;
+    } else {
+        cerr << "ERROR: unable to open simout.txt" << endl;
     }
-    // Check if lambda is float
-    if (lambda != static_cast<double>(lambda)) {
-        cerr << "ERROR: Invalid argument(s)" << endl;
-        return EXIT_FAILURE;
-    }
-    if (n <= 0 || n_cpu <= 0 || seed <= 0 || lambda <= 0 || threshold <= 0) {
-        cerr << "ERROR: Invalid argument(s)" << endl;
-        return EXIT_FAILURE;
-    }
 
-    srand48(seed);
-
-    auto processes = generateProcesses(n, n_cpu, lambda, threshold, seed);
-    printProcesses(processes, n_cpu, seed, lambda, threshold);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
