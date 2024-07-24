@@ -16,10 +16,11 @@ class Process
 public:
     string id;
     int arrivalTime;
+    bool CPUBound;
     vector<int> cpuBursts;
     vector<int> ioBursts;
 
-    Process(string id, int arrivalTime) : id(id), arrivalTime(arrivalTime) {}
+    Process(string id, int arrivalTime, bool CPUBound) : id(id), arrivalTime(arrivalTime), CPUBound(CPUBound) {}
 };
 
 class ExponentialDistribution
@@ -69,7 +70,7 @@ vector<Process> generateProcesses(int n, int ncpu, ExponentialDistribution ed)
         char num = '0' + number;
         string id = string(1, letter) + num;
         // Define the process
-        Process p = Process(id, arrival);
+        Process p = Process(id, arrival,ncpu > 0);
         // Increment ids
         number++;
         // Find the CPU burst count
@@ -111,23 +112,24 @@ void printProcesses(const vector<Process> &processes, int ncpu, int seed, double
     cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process" <<  (ncpu > 1 ? "es" : "") << endl;
     cout << "<<< -- seed=" << seed << "; lambda=" << fixed << setprecision(6) << lambda << "; bound=" << bound << endl;
 
-    for (const auto &process : processes)
+    for (Process process : processes)
     {
-        bool is_CPU_bound = (find(process.id.begin(), process.id.end(), '0') != process.id.end());
+        bool is_CPU_bound = process.CPUBound;
         cout << (is_CPU_bound ? "CPU-bound" : "I/O-bound")
              << " process " << process.id << ": arrival time " << process.arrivalTime << "ms; "
              << process.cpuBursts.size() << " CPU bursts:" << endl;
 
-        for (size_t i = 0; i < process.cpuBursts.size(); ++i)
+        for (long unsigned int i = 0; i < process.cpuBursts.size(); i++)
         {
             cout << "==> CPU burst " << process.cpuBursts[i] << "ms";
             measurements[is_CPU_bound ? "cpu-bound-cpu-time" : "io-bound-cpu-time"] += process.cpuBursts[i];
-            measurements[is_CPU_bound ? "num-cpu-bound-bursts" : "num-io-bound-bursts"] += 1;
+            measurements[is_CPU_bound ? "num-cpu-bound-cpu-bursts" : "num-io-bound-cpu-bursts"] += 1;
             
             if (i < process.ioBursts.size())
             {
                 cout << " ==> I/O burst " << process.ioBursts[i] << "ms";
                 measurements[is_CPU_bound ? "cpu-bound-io-time" : "io-bound-io-time"] += process.ioBursts[i];
+                measurements[is_CPU_bound ? "num-cpu-bound-io-bursts" : "num-io-bound-io-bursts"] += 1;
             }
             cout << endl;
         }
@@ -165,14 +167,21 @@ int main(int argc, char *argv[])
     // create simout file to write averages to
     ofstream simout("simout.txt");
     if(simout.is_open()){
-        float cpu_bound_cpu_avg = measurements["cpu-bound-cpu-time"] / float(measurements["num-cpu-bound-bursts"]);
-        float io_bound_cpu_avg = measurements["io-bound-cpu-time"] / float(measurements["num-io-bound-bursts"]);
+        float cpu_bound_cpu_avg = measurements["cpu-bound-cpu-time"] / float(measurements["num-cpu-bound-cpu-bursts"]);
+        float io_bound_cpu_avg = measurements["io-bound-cpu-time"] / float(measurements["num-io-bound-cpu-bursts"]);
         float overall_cpu_avg = (measurements["cpu-bound-cpu-time"] + measurements["io-bound-cpu-time"]) / 
-            float(measurements["num-cpu-bound-bursts"] + measurements["num-io-bound-bursts"]);
-        float cpu_bound_io_avg = measurements["cpu-bound-io-time"] / float(measurements["num-cpu-bound-bursts"] - 1);
-        float io_bound_io_avg = measurements["io-bound-io-time"] / float(measurements["num-io-bound-bursts"] - (n - ncpu));
+        float(measurements["num-cpu-bound-cpu-bursts"] + measurements["num-io-bound-cpu-bursts"]);
+        float cpu_bound_io_avg = measurements["cpu-bound-io-time"] / float(measurements["num-cpu-bound-io-bursts"]);
+        float io_bound_io_avg = measurements["io-bound-io-time"] / float(measurements["num-io-bound-io-bursts"]);
         float overall_io_avg = (measurements["io-bound-io-time"] + measurements["cpu-bound-io-time"]) /
-            float(measurements["num-cpu-bound-bursts"] + measurements["num-io-bound-bursts"] - n);
+        float(measurements["num-cpu-bound-io-bursts"] + measurements["num-io-bound-io-bursts"]);
+        // ROUND UP TO 3 DECIMALS
+        cpu_bound_cpu_avg = ceil(cpu_bound_cpu_avg*1000)/1000;
+        io_bound_cpu_avg = ceil(io_bound_cpu_avg*1000)/1000;
+        overall_cpu_avg = ceil(overall_cpu_avg*1000)/1000;
+        cpu_bound_io_avg = ceil(cpu_bound_io_avg*1000)/1000;
+        io_bound_io_avg = ceil(io_bound_io_avg*1000)/1000;
+        overall_io_avg = ceil(overall_io_avg*1000)/1000;
 
         simout << "-- number of processes: " << n << endl;
         simout << "-- number of CPU-bound processes: " << ncpu << endl;
