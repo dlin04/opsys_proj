@@ -1,0 +1,42 @@
+<<< PROJECT PART I
+<<< -- process set (n=3) with 1 CPU-bound process(es)
+<<< -- seed=32; lambda=0.001; bound=1024
+CPU-bound process A0: arrival time 79ms; 2 CPU bursts:
+==> CPU burst 124ms ==> I/O burst 48ms
+==> CPU burst 3377ms
+I/O-bound process A1: arrival time 509ms; 10 CPU bursts:
+==> CPU burst 735ms ==> I/O burst 1691ms
+==> CPU burst 17ms ==> I/O burst 1649ms
+==> CPU burst 535ms ==> I/O burst 2462ms
+==> CPU burst 727ms ==> I/O burst 2549ms
+==> CPU burst 535ms ==> I/O burst 6373ms
+==> CPU burst 719ms ==> I/O burst 3515ms
+==> CPU burst 7ms ==> I/O burst 1715ms
+==> CPU burst 923ms ==> I/O burst 7343ms
+==> CPU burst 168ms ==> I/O burst 2295ms
+==> CPU burst 55ms
+I/O-bound process A2: arrival time 455ms; 24 CPU bursts:
+==> CPU burst 100ms ==> I/O burst 1851ms
+==> CPU burst 946ms ==> I/O burst 2955ms
+==> CPU burst 1ms ==> I/O burst 5781ms
+==> CPU burst 497ms ==> I/O burst 2339ms
+==> CPU burst 156ms ==> I/O burst 90ms
+==> CPU burst 334ms ==> I/O burst 1136ms
+==> CPU burst 189ms ==> I/O burst 2829ms
+==> CPU burst 697ms ==> I/O burst 2980ms
+==> CPU burst 482ms ==> I/O burst 4850ms
+==> CPU burst 13ms ==> I/O burst 3484ms
+==> CPU burst 181ms ==> I/O burst 3186ms
+==> CPU burst 688ms ==> I/O burst 3477ms
+==> CPU burst 686ms ==> I/O burst 7227ms
+==> CPU burst 383ms ==> I/O burst 5760ms
+==> CPU burst 134ms ==> I/O burst 7698ms
+==> CPU burst 131ms ==> I/O burst 919ms
+==> CPU burst 254ms ==> I/O burst 1663ms
+==> CPU burst 572ms ==> I/O burst 599ms
+==> CPU burst 1012ms ==> I/O burst 583ms
+==> CPU burst 146ms ==> I/O burst 1256ms
+==> CPU burst 222ms ==> I/O burst 29ms
+==> CPU burst 714ms ==> I/O burst 1762ms
+==> CPU burst 627ms ==> I/O burst 4163ms
+==> CPU burst 71ms
