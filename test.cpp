@@ -3,6 +3,7 @@
 #include <queue>
 #include <cmath>
 #include <random>
+#include <iomanip>
 #include <algorithm> // Add this line to include the algorithm header
 
 using namespace std;
@@ -104,8 +105,8 @@ vector<Process> generateProcesses(int n, int ncpu, ExponentialDistribution ed)
 void printProcesses(const vector<Process> &processes, int ncpu, int seed, double lambda, int bound)
 {
     cout << "<<< PROJECT PART I" << endl;
-    cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process(es)" << endl;
-    cout << "<<< -- seed=" << seed << "; lambda=" << lambda << "; bound=" << bound << endl;
+    cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process" <<  (ncpu > 1 ? "es" : "") << endl;
+    cout << "<<< -- seed=" << seed << "; lambda=" << fixed << setprecision(6) << lambda << "; bound=" << bound << endl;
 
     for (const auto &process : processes)
     {
