@@ -111,12 +111,15 @@ void printProcesses(const vector<Process> &processes, int ncpu, int seed, double
     cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process" <<  (ncpu > 1 ? "es" : "") << endl;
     cout << "<<< -- seed=" << seed << "; lambda=" << fixed << setprecision(6) << lambda << "; bound=" << bound << endl;
 
+    int count = 0;
     for (const auto &process : processes)
     {
-        bool is_CPU_bound = (find(process.id.begin(), process.id.end(), '0') != process.id.end());
+        bool is_CPU_bound = count < ncpu;
         cout << (is_CPU_bound ? "CPU-bound" : "I/O-bound")
              << " process " << process.id << ": arrival time " << process.arrivalTime << "ms; "
              << process.cpuBursts.size() << " CPU bursts:" << endl;
+
+        count++;
 
         for (size_t i = 0; i < process.cpuBursts.size(); ++i)
         {
