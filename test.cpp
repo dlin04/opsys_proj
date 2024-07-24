@@ -7,7 +7,8 @@
 
 using namespace std;
 
-class Process {
+class Process
+{
 public:
     string id;
     int arrivalTime;
@@ -17,60 +18,106 @@ public:
     Process(string id, int arrivalTime) : id(id), arrivalTime(arrivalTime) {}
 };
 
-double next_exp(double lambda, mt19937_64& rng) {
-    uniform_real_distribution<double> dist(0.0, 1.0);
-    return -log(dist(rng)) / lambda;
-}
+class ExponentialDistribution
+{
+private:
+    int seed;
+    double lambda;
+    int max;
 
-vector<Process> generateProcesses(int n, int ncpu, double lambda, int bound, int seed) {
-    vector<Process> processes;
-    mt19937_64 rng(seed);
-
-    auto generateBurstTime = [&](double factor) {
-        double burst;
-        do {
-            burst = next_exp(lambda, rng);
-        } while (burst > bound);
-        return static_cast<int>(ceil(burst * factor));
-    };
-
-    for (int i = 0; i < n; ++i) {
-        string id = string(1, 'A' + i / 10) + to_string(i % 10);
-        int arrivalTime = static_cast<int>(floor(next_exp(lambda, rng)));
-        Process process(id, arrivalTime);
-
-        int numBursts = static_cast<int>(ceil(drand48() * 32));
-        bool isCpuBound = i < ncpu;
-
-        for (int j = 0; j < numBursts; ++j) {
-            double cpuFactor = isCpuBound ? 4.0 : 1.0;
-            double ioFactor = isCpuBound ? 1.0 / 8.0 : 8.0;
-
-            process.cpuBursts.push_back(generateBurstTime(cpuFactor));
-            if (j < numBursts - 1) {
-                process.ioBursts.push_back(generateBurstTime(ioFactor));
-            }
-        }
-
-        processes.push_back(process);
+public:
+    ExponentialDistribution(int seed, double lambda, int max)
+    {
+        this->seed = seed;
+        this->lambda = lambda;
+        this->max = max;
+        srand48(this->seed);
     }
 
+    double next_exp()
+    {
+        while(true) {
+            double r = drand48();
+            double num = -log(r) / lambda;
+            if(num <= max) {
+                return num;
+            }
+        }
+    }
+};
+
+vector<Process> generateProcesses(int n, int ncpu, ExponentialDistribution ed)
+{
+    vector<Process> processes;
+    char letter = 'A';
+    int number = 0;
+    // Loop over process count
+    for (int i = 0; i < n; i++)
+    {
+        // Get random number
+        int arrival = floor(ed.next_exp());
+        // Get the process ID
+        if (number > 9)
+        {
+            number = 0;
+            letter++;
+        }
+        char num = '0' + number;
+        string id = string(1, letter) + num;
+        // Define the process
+        Process p = Process(id, arrival);
+        // Increment ids
+        number++;
+        // Find the CPU burst count
+        int numCPU = ceil(drand48() * 32);
+        for (int j = 0; j < numCPU; j++)
+        {
+            // CPU TASK
+            int cputime = ceil(ed.next_exp());
+            if (ncpu > 0)
+            {
+                cputime *= 4;
+            }
+            p.cpuBursts.push_back(cputime);
+            // IO TASK (all but last iteration)
+            if (j < numCPU - 1)
+            {
+                int iotime = ceil(ed.next_exp());
+                if (ncpu <= 0)
+                {
+                    iotime *= 8;
+                }
+                p.ioBursts.push_back(iotime);
+            }
+        }
+        // If this process was a CPU scheduled process, decrement that counter
+        if (ncpu > 0)
+        {
+            ncpu--;
+        }
+        // Add process to list
+        processes.push_back(p);
+    }
     return processes;
 }
 
-void printProcesses(const vector<Process>& processes, int ncpu, int seed, double lambda, int bound) {
+void printProcesses(const vector<Process> &processes, int ncpu, int seed, double lambda, int bound)
+{
     cout << "<<< PROJECT PART I" << endl;
     cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process(es)" << endl;
     cout << "<<< -- seed=" << seed << "; lambda=" << lambda << "; bound=" << bound << endl;
 
-    for (const auto& process : processes) {
+    for (const auto &process : processes)
+    {
         cout << (find(process.id.begin(), process.id.end(), '0') != process.id.end() ? "CPU-bound" : "I/O-bound")
              << " process " << process.id << ": arrival time " << process.arrivalTime << "ms; "
              << process.cpuBursts.size() << " CPU bursts:" << endl;
 
-        for (size_t i = 0; i < process.cpuBursts.size(); ++i) {
+        for (size_t i = 0; i < process.cpuBursts.size(); ++i)
+        {
             cout << "==> CPU burst " << process.cpuBursts[i] << "ms";
-            if (i < process.ioBursts.size()) {
+            if (i < process.ioBursts.size())
+            {
                 cout << " ==> I/O burst " << process.ioBursts[i] << "ms";
             }
             cout << endl;
@@ -78,8 +125,10 @@ void printProcesses(const vector<Process>& processes, int ncpu, int seed, double
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc != 6) {
+int main(int argc, char *argv[])
+{
+    if (argc != 6)
+    {
         cerr << "Usage: " << argv[0] << " <n> <ncpu> <seed> <lambda> <bound>" << endl;
         return 1;
     }
@@ -90,9 +139,9 @@ int main(int argc, char* argv[]) {
     double lambda = stod(argv[4]);
     int bound = stoi(argv[5]);
 
-    srand48(seed);
+    ExponentialDistribution ed = ExponentialDistribution(seed, lambda, bound);
 
-    auto processes = generateProcesses(n, ncpu, lambda, bound, seed);
+    auto processes = generateProcesses(n, ncpu, ed);
     printProcesses(processes, ncpu, seed, lambda, bound);
 
     return 0;
