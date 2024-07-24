@@ -4,7 +4,10 @@
 #include <cmath>
 #include <random>
 #include <iomanip>
-#include <algorithm> // Add this line to include the algorithm header
+#include <fstream>
+#include <map>
+#include <string>
+#include <algorithm>
 
 using namespace std;
 
@@ -102,7 +105,7 @@ vector<Process> generateProcesses(int n, int ncpu, ExponentialDistribution ed)
     return processes;
 }
 
-void printProcesses(const vector<Process> &processes, int ncpu, int seed, double lambda, int bound)
+void printProcesses(const vector<Process> &processes, int ncpu, int seed, double lambda, int bound, map<string, int> &measurements)
 {
     cout << "<<< PROJECT PART I" << endl;
     cout << "<<< -- process set (n=" << processes.size() << ") with " << ncpu << " CPU-bound process" <<  (ncpu > 1 ? "es" : "") << endl;
@@ -110,16 +113,21 @@ void printProcesses(const vector<Process> &processes, int ncpu, int seed, double
 
     for (const auto &process : processes)
     {
-        cout << (find(process.id.begin(), process.id.end(), '0') != process.id.end() ? "CPU-bound" : "I/O-bound")
+        bool is_CPU_bound = (find(process.id.begin(), process.id.end(), '0') != process.id.end());
+        cout << (is_CPU_bound ? "CPU-bound" : "I/O-bound")
              << " process " << process.id << ": arrival time " << process.arrivalTime << "ms; "
              << process.cpuBursts.size() << " CPU bursts:" << endl;
 
         for (size_t i = 0; i < process.cpuBursts.size(); ++i)
         {
             cout << "==> CPU burst " << process.cpuBursts[i] << "ms";
+            measurements[is_CPU_bound ? "cpu-bound-cpu-time" : "io-bound-cpu-time"] += process.cpuBursts[i];
+            measurements[is_CPU_bound ? "num-cpu-bound-bursts" : "num-io-bound-bursts"] += 1;
+            
             if (i < process.ioBursts.size())
             {
                 cout << " ==> I/O burst " << process.ioBursts[i] << "ms";
+                measurements[is_CPU_bound ? "cpu-bound-io-time" : "io-bound-io-time"] += process.ioBursts[i];
             }
             cout << endl;
         }
@@ -142,8 +150,42 @@ int main(int argc, char *argv[])
 
     ExponentialDistribution ed = ExponentialDistribution(seed, lambda, bound);
 
+    map<string, int> measurements;
+    measurements["cpu-bound-cpu-time"] = 0;
+    measurements["cpu-bound-io-time"] = 0;
+    measurements["io-bound-cpu-time"] = 0;
+    measurements["io-bound-io-time"] = 0;
+    measurements["num-cpu-bound-bursts"] = 0;
+    measurements["num-io-bound-bursts"] = 0;
+
     auto processes = generateProcesses(n, ncpu, ed);
-    printProcesses(processes, ncpu, seed, lambda, bound);
+    printProcesses(processes, ncpu, seed, lambda, bound, measurements);
+
+
+    // create simout file to write averages to
+    ofstream simout("simout.txt");
+    if(simout.is_open()){
+        float cpu_bound_cpu_avg = measurements["cpu-bound-cpu-time"] / float(measurements["num-cpu-bound-bursts"]);
+        float io_bound_cpu_avg = measurements["io-bound-cpu-time"] / float(measurements["num-io-bound-bursts"]);
+        float overall_cpu_avg = (measurements["cpu-bound-cpu-time"] + measurements["io-bound-cpu-time"]) / 
+            float(measurements["num-cpu-bound-bursts"] + measurements["num-io-bound-bursts"]);
+        float cpu_bound_io_avg = measurements["cpu-bound-io-time"] / float(measurements["num-cpu-bound-bursts"] - 1);
+        float io_bound_io_avg = measurements["io-bound-io-time"] / float(measurements["num-io-bound-bursts"] - (n - ncpu));
+        float overall_io_avg = (measurements["io-bound-io-time"] + measurements["cpu-bound-io-time"]) /
+            float(measurements["num-cpu-bound-bursts"] + measurements["num-io-bound-bursts"] - n);
+
+        simout << "-- number of processes: " << n << endl;
+        simout << "-- number of CPU-bound processes: " << ncpu << endl;
+        simout << "-- number of I/O-bound processes: " << n - ncpu << endl;
+        simout << "-- CPU-bound average CPU burst time: " << fixed << setprecision(3) << cpu_bound_cpu_avg << " ms" << endl;
+        simout << "-- I/O-bound average CPU burst time: " << fixed << setprecision(3) << io_bound_cpu_avg << " ms" << endl;
+        simout << "-- overall average CPU burst time: " << fixed << setprecision(3) << overall_cpu_avg << " ms" << endl;
+        simout << "-- CPU-bound average I/O burst time: " << fixed << setprecision(3) << cpu_bound_io_avg << " ms" << endl;
+        simout << "-- I/O-bound average I/O burst time: " << fixed << setprecision(3) << io_bound_io_avg << " ms" << endl;
+        simout << "-- overall average I/O burst time: " << fixed << setprecision(3) << overall_io_avg << " ms" << endl;
+    } else {
+        cerr << "ERROR: unable to open simout.txt" << endl;
+    }
 
     return 0;
 }
