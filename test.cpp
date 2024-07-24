@@ -157,8 +157,10 @@ int main(int argc, char *argv[])
     measurements["cpu-bound-io-time"] = 0;
     measurements["io-bound-cpu-time"] = 0;
     measurements["io-bound-io-time"] = 0;
-    measurements["num-cpu-bound-bursts"] = 0;
-    measurements["num-io-bound-bursts"] = 0;
+    measurements["num-cpu-bound-cpu-bursts"] = 0;
+    measurements["num-io-bound-cpu-bursts"] = 0;
+    measurements["num-cpu-bound-io-bursts"] = 0;
+    measurements["num-io-bound-io-bursts"] = 0;
 
     auto processes = generateProcesses(n, ncpu, ed);
     printProcesses(processes, ncpu, seed, lambda, bound, measurements);
